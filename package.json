@@ -1,0 +1,20 @@
+{
+  "name": "ezfind",
+  "version": "1.0.0",
+  "description": "EZFind – unified marketplace (React + Express + MySQL)",
+  "private": true,
+  "scripts": {
+    "setup":         "npm run setup:backend && npm run setup:frontend",
+    "setup:backend": "cd backend && npm install",
+    "setup:frontend":"cd frontend && npm install",
+    "dev":           "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend":   "cd backend && npm run dev",
+    "dev:frontend":  "cd frontend && npm start",
+    "build":         "cd frontend && npm run build",
+    "start":         "cd backend && npm start",
+    "db:init":       "mysql -u $DB_USER -p$DB_PASSWORD < scripts/init_db.sql"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
