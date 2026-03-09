@@ -1,13 +1,61 @@
 const db = require('../db');
 
+function firstNonEmptyString(...values) {
+  for (const value of values) {
+    if (typeof value !== 'string') {
+      continue;
+    }
+
+    const trimmed = value.trim();
+    if (trimmed) {
+      return trimmed;
+    }
+  }
+
+  return '';
+}
+
+function looksLikeUrl(value) {
+  if (typeof value !== 'string') {
+    return false;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return false;
+  }
+
+  return /^https?:\/\//i.test(trimmed) || /^www\./i.test(trimmed);
+}
+
+function normalizeDisplayTitle(...values) {
+  const candidate = firstNonEmptyString(...values);
+  if (!candidate || looksLikeUrl(candidate)) {
+    return 'Untitled listing';
+  }
+
+  return candidate;
+}
+
 function normalizeSavedItemInput(payload = {}) {
   const rawExternalId = payload.externalItemId ?? payload.id;
   const externalItemId = typeof rawExternalId === 'string' ? rawExternalId.trim() : '';
-  const itemName = typeof payload.title === 'string' ? payload.title.trim() : '';
+  const itemName = normalizeDisplayTitle(
+    payload.title,
+    payload.itemName,
+    payload.name,
+    payload.Name
+  );
   const itemDescription = typeof payload.description === 'string' ? payload.description.trim() : null;
   const source = typeof payload.source === 'string' ? payload.source.trim().toLowerCase() : '';
   const url = typeof payload.url === 'string' ? payload.url.trim() : '';
-  const imageUrl = typeof payload.image === 'string' ? payload.image.trim() : null;
+  const imageUrl = firstNonEmptyString(
+    payload.image,
+    payload.imageUrl,
+    payload.thumbnail,
+    payload.photo,
+    payload.photoUrl
+  ) || null;
   const location = typeof payload.location === 'string' ? payload.location.trim() : null;
 
   const numericPrice = Number(payload.price);
@@ -99,10 +147,10 @@ class SavedItemsService {
           userId,
           normalized.externalItemId,
           normalized.itemName,
-          normalized.itemName || normalized.externalItemId,
+          normalized.itemName,
           normalized.itemDescription,
           normalized.price,
-          normalized.price,
+          normalized.price ?? 0,
           normalized.url,
           normalized.source,
           normalized.imageUrl,
@@ -121,18 +169,7 @@ class SavedItemsService {
 
   async listSavedItemsForUser(userId) {
     const [rows] = await this.db.query(
-      `SELECT
-        UserId,
-        ExternalItemId,
-        ItemName,
-        ItemDescription,
-        Price,
-        Url,
-        Source,
-        ImageUrl,
-        Location,
-        PostedAt,
-        DateSaved
+      `SELECT *
       FROM SavedItems
       WHERE UserId = ?
       ORDER BY DateSaved DESC`,
@@ -143,12 +180,12 @@ class SavedItemsService {
       itemId: row.ItemId ?? null,
       userId: row.UserId,
       externalItemId: row.ExternalItemId,
-      title: row.ItemName,
+      title: normalizeDisplayTitle(row.ItemName, row.Name),
       description: row.ItemDescription,
-      price: row.Price,
+      price: row.Price ?? row.Cost ?? null,
       url: row.Url,
       source: row.Source,
-      image: row.ImageUrl,
+      image: firstNonEmptyString(row.ImageUrl, row.Image, row.Thumbnail, row.PhotoUrl) || null,
       location: row.Location,
       postedAt: row.PostedAt,
       dateSaved: row.DateSaved,

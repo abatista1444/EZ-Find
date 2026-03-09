@@ -143,15 +143,44 @@ function getExternalItemId(listing) {
   return `${source}:${url}`;
 }
 
+function firstNonEmptyString(...values) {
+  for (const value of values) {
+    if (typeof value !== 'string') {
+      continue;
+    }
+
+    const trimmed = value.trim();
+    if (trimmed) {
+      return trimmed;
+    }
+  }
+
+  return '';
+}
+
+function getListingTitle(listing) {
+  return firstNonEmptyString(listing.title, listing.itemName, listing.name, listing.Name) || 'Untitled listing';
+}
+
+function getListingImage(listing) {
+  return firstNonEmptyString(
+    listing.image,
+    listing.imageUrl,
+    listing.thumbnail,
+    listing.photo,
+    listing.photoUrl
+  ) || null;
+}
+
 function buildSavedItemPayload(listing) {
   return {
     externalItemId: getExternalItemId(listing),
-    title: listing.title || 'Untitled listing',
+    title: getListingTitle(listing),
     description: listing.location || null,
     price: listing.price,
     url: listing.url,
     source: listing.source,
-    image: listing.image,
+    image: getListingImage(listing),
     location: listing.location,
     postedAt: listing.postedAt,
   };
