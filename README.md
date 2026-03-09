@@ -178,13 +178,17 @@ npm start    # starts only the Express server on port 5000
 
 ## API Reference
 
-| Method | Endpoint           | Auth required | Description                     |
-|--------|--------------------|---------------|---------------------------------|
-| GET    | `/api/health`      | No            | Health check                    |
-| POST   | `/api/auth/register` | No (guest)  | Create new account              |
-| POST   | `/api/auth/login`  | No (guest)    | Sign in                         |
-| POST   | `/api/auth/logout` | Yes           | Sign out (destroys session)     |
-| GET    | `/api/auth/me`     | Yes           | Get current user profile        |
+| Method | Endpoint                        | Auth required | Description                              |
+|--------|---------------------------------|---------------|------------------------------------------|
+| GET    | `/api/health`                   | No            | Health check                             |
+| POST   | `/api/auth/register`            | No (guest)    | Create new account and start session     |
+| POST   | `/api/auth/login`               | No (guest)    | Sign in and regenerate session           |
+| POST   | `/api/auth/logout`              | Yes           | Sign out (destroys session)              |
+| GET    | `/api/auth/me`                  | Yes           | Get current user profile                 |
+| GET    | `/api/search`                   | No            | Search normalized marketplace listings   |
+| GET    | `/api/saved-items`              | Yes           | List the current user's saved items       |
+| POST   | `/api/saved-items`              | Yes           | Save a listing for the current user      |
+| DELETE | `/api/saved-items/:externalItemId` | Yes        | Remove a saved listing by external ID    |
 
 ### POST /api/auth/register
 
@@ -203,38 +207,152 @@ npm start    # starts only the Express server on port 5000
 
 Password requirements: 8+ characters, 1 uppercase letter, 1 number.
 
+### GET /api/search
+
+Query parameters:
+- `q` (required): search keyword(s)
+- `location` (optional): location/site hint
+- `minPrice` (optional): minimum price number
+- `maxPrice` (optional): maximum price number
+
+Example request:
+
+```http
+GET /api/search?q=bicycle&location=Seattle&minPrice=100&maxPrice=1000
+```
+
+Example response:
+
+```json
+{
+  "listings": [
+    {
+      "id": "cl-123",
+      "title": "Road Bike",
+      "price": 450,
+      "url": "https://...",
+      "source": "craigslist"
+    }
+  ],
+  "errors": []
+}
+```
+
+Returns `400` when `q` is missing.
+
+### GET /api/saved-items
+
+Requires an authenticated session cookie.
+
+Example response:
+
+```json
+{
+  "items": [
+    {
+      "externalItemId": "cl-123",
+      "title": "Road Bike",
+      "url": "https://...",
+      "source": "craigslist"
+    }
+  ]
+}
+```
+
+### POST /api/saved-items
+
+Requires an authenticated session cookie.
+
+Example request:
+
+```json
+{
+  "externalItemId": "cl-123",
+  "title": "Road Bike",
+  "url": "https://example.com/listing/123",
+  "source": "craigslist",
+  "price": 450,
+  "location": "Seattle"
+}
+```
+
+Returns:
+- `201` when saved
+- `409` if the item is already saved
+- `422` for validation errors
+
+### DELETE /api/saved-items/:externalItemId
+
+Requires an authenticated session cookie.
+
+Returns:
+- `200` when removed
+- `404` if the item was not found
+- `422` for validation errors
+
 ---
 
 ## Project Structure
 
 ```
 ezfind/
-├── build.sh                  # Build & setup script
-├── package.json              # Root scripts (dev, build, setup)
+├── build.sh                      # Build/setup script
+├── node_install.sh               # Node install helper script
+├── EZfind_tables.sql             # SQL schema/reference dump
+├── package.json                  # Root scripts (setup, dev, build)
 ├── scripts/
-│   └── init_db.sql           # Database schema
+│   ├── init_db.sql               # DB initialization script
+│   ├── migrate_saved_items.sql   # Saved-items migration script
+│   └── rollback_migrate_saved_items.sql
 ├── backend/
-│   ├── server.js             # Express app entry point
-│   ├── db.js                 # MySQL connection pool
-│   ├── .env.example          # Environment variable template
+│   ├── server.js                 # Express app entry point
+│   ├── db.js                     # MySQL connection pool
+│   ├── .env.example              # Environment variable template
 │   ├── package.json
-│   └── routes/
-│       └── auth.js           # Register / Login / Logout / Me
+│   ├── services/
+│   │   ├── ListingAggregator.js  # Multi-source aggregation logic
+│   │   ├── listingTypes.js       # Shared listing normalization types
+│   │   ├── savedItemsService.js
+│   │   └── marketplaces/
+│   │       ├── craigslistConnector.js
+│   │       └── craigslistSources/
+│   │           ├── ProviderCraigslistSource.js
+│   │           ├── RssCraigslistSource.js
+│   │           └── ScrapeCraigslistSource.js
+│   ├── routes/
+│   │   ├── auth.js               # Register / login / logout / me
+│   │   ├── search.js             # Unified listing search endpoint
+│   │   └── savedItems.js         # Saved listings CRUD endpoints
+│   └── test/
+│       ├── aggregator.test.js
+│       ├── craigslistConnector.test.js
+│       ├── rssCraigslistSource.test.js
+│       ├── savedItems.test.js
+│       ├── scrapeCraigslistSource.test.js
+│       └── searchRoute.test.js
 └── frontend/
-    ├── package.json
-    └── src/
-        ├── App.js            # Router setup
-        ├── index.js
-        ├── context/
-        │   └── AuthContext.js    # Global auth state + API calls
-        ├── components/
-        │   └── ProtectedRoute.js # Guards authenticated routes
-        └── pages/
-            ├── LoginPage.js
-            ├── RegisterPage.js
-            ├── DashboardPage.js
-            ├── Auth.css
-            └── Dashboard.css
+  ├── package.json
+  ├── public/
+  │   └── index.html
+  └── src/
+    ├── App.js                # Router setup
+    ├── index.js
+    ├── api/
+    │   └── savedItemsApi.js
+    ├── context/
+    │   └── AuthContext.js
+    ├── components/
+    │   └── ProtectedRoute.js
+    └── pages/
+      ├── SearchPage.js
+      ├── SavedItemsPage.js
+      ├── LoginPage.js
+      ├── RegisterPage.js
+      ├── DashboardPage.js
+      ├── Auth.css
+      ├── Dashboard.css
+      ├── Search.css
+      └── SavedItems.css
 ```
 
 ---
