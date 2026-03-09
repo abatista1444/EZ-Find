@@ -168,6 +168,15 @@
   font-size: 1.1rem;
 }
 
+.save-message {
+  margin: -1rem 0 1.5rem;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #2d3748;
+  font-weight: 600;
+}
+
 .results-section {
   background: white;
   padding: 2rem;
@@ -284,6 +293,41 @@
 
 .view-listing:hover {
   background: #764ba2;
+}
+
+.listing-actions {
+  display: flex;
+  gap: 0.65rem;
+  margin-top: 1rem;
+}
+
+.listing-actions .view-listing {
+  margin-top: 0;
+}
+
+.save-item-btn {
+  border: none;
+  border-radius: 6px;
+  padding: 0.5rem 0.9rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+  background: #2d3748;
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.save-item-btn:hover:not(:disabled) {
+  background: #1a202c;
+}
+
+.save-item-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.save-item-btn--saved {
+  background: #2f855a;
 }
 
 @media (max-width: 768px) {

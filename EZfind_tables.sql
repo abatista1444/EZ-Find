@@ -38,10 +38,18 @@ CREATE TABLE Users (
             
 	CREATE TABLE SavedItems (
 		ItemId INT AUTO_INCREMENT PRIMARY KEY,
-        UserId INT NOT NULL,
-        ItemName VARCHAR(255),
-        ItemDescription TEXT,
-        DateSaved DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UserId INT NOT NULL,
+    ExternalItemId VARCHAR(255) NOT NULL,
+    ItemName VARCHAR(255) NOT NULL,
+    ItemDescription TEXT,
+    Price DECIMAL(10, 2),
+    Url TEXT NOT NULL,
+    Source VARCHAR(100) NOT NULL,
+    ImageUrl TEXT,
+    Location VARCHAR(255),
+    PostedAt DATETIME,
+    DateSaved DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_saved_items_user_external (UserId, ExternalItemId),
         FOREIGN KEY (UserId) REFERENCES Users(UserId)
 			ON DELETE CASCADE );
             

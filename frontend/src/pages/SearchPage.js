@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { createSavedItem, fetchSavedItems } from '../api/savedItemsApi';
 import './Search.css';
 
 function formatPrice(price) {
@@ -130,7 +131,33 @@ function LazyListingImage({ listingKey, imageUrl, altText, onPermanentError }) {
   );
 }
 
-function ListingCard({ listing, hasImageError, onImageError }) {
+function getExternalItemId(listing) {
+  const rawId = typeof listing.id === 'string' ? listing.id.trim() : '';
+  if (rawId) {
+    return rawId;
+  }
+
+  const source = typeof listing.source === 'string' ? listing.source.trim().toLowerCase() : 'unknown';
+  const url = typeof listing.url === 'string' ? listing.url.trim() : '';
+
+  return `${source}:${url}`;
+}
+
+function buildSavedItemPayload(listing) {
+  return {
+    externalItemId: getExternalItemId(listing),
+    title: listing.title || 'Untitled listing',
+    description: listing.location || null,
+    price: listing.price,
+    url: listing.url,
+    source: listing.source,
+    image: listing.image,
+    location: listing.location,
+    postedAt: listing.postedAt,
+  };
+}
+
+function ListingCard({ listing, hasImageError, onImageError, onSave, isSaving, isSaved }) {
   const listingKey = listing.id || listing.url;
   const imageUrl = hasImageError ? null : listing.image;
   const sourceLabel = typeof listing.source === 'string' ? listing.source.toUpperCase() : 'UNKNOWN';
@@ -154,14 +181,24 @@ function ListingCard({ listing, hasImageError, onImageError }) {
             Posted: {new Date(listing.postedAt).toLocaleDateString()}
           </p>
         )}
-        <a
-          href={listing.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="view-listing"
-        >
-          View on {listing.source}
-        </a>
+        <div className="listing-actions">
+          <a
+            href={listing.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="view-listing"
+          >
+            View on {listing.source}
+          </a>
+          <button
+            type="button"
+            className={`save-item-btn ${isSaved ? 'save-item-btn--saved' : ''}`}
+            onClick={() => onSave(listing)}
+            disabled={isSaving || isSaved}
+          >
+            {isSaved ? 'Saved' : isSaving ? 'Saving...' : 'Save Item'}
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -178,6 +215,34 @@ export default function SearchPage() {
   const [loading, setLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [imageErrorsByListing, setImageErrorsByListing] = useState({});
+  const [savedExternalIds, setSavedExternalIds] = useState(new Set());
+  const [savingByExternalId, setSavingByExternalId] = useState({});
+  const [saveMessage, setSaveMessage] = useState('');
+
+  const firstName = user?.firstName || user?.FirstName || 'User';
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadSavedItems = async () => {
+      try {
+        const items = await fetchSavedItems();
+        if (!isMounted) {
+          return;
+        }
+
+        setSavedExternalIds(new Set(items.map(item => item.externalItemId)));
+      } catch (err) {
+        console.error('Failed to preload saved items:', err);
+      }
+    };
+
+    loadSavedItems();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const handleSearch = async (e) => {
     e.preventDefault();
@@ -239,6 +304,46 @@ export default function SearchPage() {
     });
   };
 
+  const handleSaveListing = async (listing) => {
+    const payload = buildSavedItemPayload(listing);
+
+    if (!payload.externalItemId || !payload.url || !payload.source) {
+      setSaveMessage('This item is missing required details and cannot be saved.');
+      return;
+    }
+
+    setSavingByExternalId(prev => ({
+      ...prev,
+      [payload.externalItemId]: true,
+    }));
+
+    try {
+      await createSavedItem(payload);
+      setSavedExternalIds(prev => {
+        const next = new Set(prev);
+        next.add(payload.externalItemId);
+        return next;
+      });
+      setSaveMessage('Item saved successfully.');
+    } catch (err) {
+      if (err.status === 409) {
+        setSavedExternalIds(prev => {
+          const next = new Set(prev);
+          next.add(payload.externalItemId);
+          return next;
+        });
+        setSaveMessage('Item is already in your saved list.');
+      } else {
+        setSaveMessage(err.message || 'Failed to save item. Please try again.');
+      }
+    } finally {
+      setSavingByExternalId(prev => ({
+        ...prev,
+        [payload.externalItemId]: false,
+      }));
+    }
+  };
+
   return (
     <div className="search-page">
       <header className="search-header">
@@ -247,7 +352,7 @@ export default function SearchPage() {
         </button>
         <h1>EZFind Search</h1>
         <div className="search-user">
-          <span>{user.firstName}!</span>
+          <span>{firstName}!</span>
           <button className="logout-btn" onClick={handleLogout}>Sign Out</button>
         </div>
       </header>
@@ -283,6 +388,8 @@ export default function SearchPage() {
           </button>
         </form>
 
+        {saveMessage && <p className="save-message">{saveMessage}</p>}
+
         {hasSearched && (
           <>
             {errors.length > 0 && (
@@ -316,6 +423,9 @@ export default function SearchPage() {
                       listing={listing}
                       hasImageError={Boolean(imageErrorsByListing[listing.id || listing.url])}
                       onImageError={handleImageError}
+                      onSave={handleSaveListing}
+                      isSaving={Boolean(savingByExternalId[getExternalItemId(listing)])}
+                      isSaved={savedExternalIds.has(getExternalItemId(listing))}
                     />
                   ))}
                 </div>

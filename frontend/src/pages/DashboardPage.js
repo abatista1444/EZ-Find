@@ -11,6 +11,10 @@ export default function DashboardPage() {
     navigate('/search');
   };
 
+  const handleSavedItemsClick = () => {
+    navigate('/saved-items');
+  };
+
   const handleLogout = async () => {
     await logout();
     navigate('/login', { replace: true });
@@ -42,9 +46,10 @@ export default function DashboardPage() {
             <p>Search Craigslist listings in one place.</p>
             <button className="card-action-btn">Start Searching →</button>
           </div>
-          <div className="placeholder-card">
+          <div className="placeholder-card action-card" onClick={handleSavedItemsClick}>
             <h3>❤️ Saved Items</h3>
             <p>View and manage items you've saved for later.</p>
+            <button className="card-action-btn">Open Saved Items →</button>
           </div>
           <div className="placeholder-card">
             <h3>🔔 Saved Searches</h3>
