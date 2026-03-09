@@ -5,7 +5,6 @@ import ProtectedRoute from './components/ProtectedRoute';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
-import SearchPage from './pages/SearchPage';
 import SavedItemsPage from './pages/SavedItemsPage';
 
 export default function App() {
@@ -26,11 +25,7 @@ export default function App() {
           />
           <Route
             path="/search"
-            element={
-              <ProtectedRoute>
-                <SearchPage />
-              </ProtectedRoute>
-            }
+            element={<Navigate to="/dashboard" replace />}
           />
           <Route
             path="/saved-items"

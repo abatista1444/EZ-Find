@@ -6,17 +6,22 @@
 }
 
 .saved-items-header {
-  background: rgba(255, 255, 255, 0.95);
+  background: linear-gradient(135deg, #1a1a2e, #0f3460);
+  color: #fff;
   padding: 1rem 2rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 1rem;
+  gap: 2rem;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
 }
 
-.saved-items-header h1 {
+.saved-items-logo {
   margin: 0;
-  color: #0f172a;
+  font-size: 1.6rem;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  color: #fff;
 }
 
 .saved-items-user {
@@ -25,11 +30,54 @@
   gap: 1rem;
 }
 
+.saved-items-user .logout-btn {
+  padding: 0.45rem 1rem;
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
+  font-size: 0.875rem;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background 0.2s;
+}
+
+.saved-items-user .logout-btn:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
 .saved-items-main {
   width: 100%;
   max-width: 1200px;
   margin: 0 auto;
   padding: 2rem;
+}
+
+.saved-items-page-intro {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.saved-items-page-intro h2 {
+  margin: 0;
+  color: #fff;
+  font-size: 1.6rem;
+}
+
+.saved-items-back-btn {
+  border: 1px solid #93c5fd;
+  border-radius: 8px;
+  background: #eff6ff;
+  color: #1e3a8a;
+  font-weight: 600;
+  padding: 0.5rem 0.85rem;
+  cursor: pointer;
+}
+
+.saved-items-back-btn:hover {
+  background: #dbeafe;
 }
 
 .saved-items-toolbar {
@@ -171,6 +219,12 @@
   .saved-items-header {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .saved-items-page-intro {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
   }
 
   .saved-items-main {

@@ -1,18 +1,113 @@
 import React from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import MarketplaceSearch from '../components/MarketplaceSearch';
 import './Dashboard.css';
 
 export default function DashboardPage() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
-  const handleSearchClick = () => {
-    navigate('/search');
-  };
-
   const handleSavedItemsClick = () => {
     navigate('/saved-items');
+  };
+
+  const handleSearch = async (e) => {
+    e.preventDefault();
+    if (!query.trim()) {
+      alert('Please enter a search query');
+      return;
+    }
+
+    setLoading(true);
+    setHasSearched(true);
+
+    try {
+      const params = new URLSearchParams();
+      params.append('q', query);
+      if (location) {
+        params.append('location', location);
+      }
+
+      const response = await fetch(`http://localhost:5000/api/search?${params}`, {
+        method: 'GET',
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const data = await response.json();
+      setListings(data.listings || []);
+      setErrors(data.errors || []);
+      setImageErrorsByListing({});
+      setSaveMessage('');
+    } catch (err) {
+      console.error('Search error:', err);
+      alert(`Search failed: ${err.message}`);
+      setListings([]);
+      setErrors([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleImageError = (listingKey) => {
+    if (!listingKey) {
+      return;
+    }
+
+    setImageErrorsByListing(prev => {
+      if (prev[listingKey]) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        [listingKey]: true,
+      };
+    });
+  };
+
+  const handleSaveListing = async (listing) => {
+    const payload = buildSavedItemPayload(listing);
+
+    if (!payload.externalItemId || !payload.url || !payload.source) {
+      setSaveMessage('This item is missing required details and cannot be saved.');
+      return;
+    }
+
+    setSavingByExternalId(prev => ({
+      ...prev,
+      [payload.externalItemId]: true,
+    }));
+
+    try {
+      await createSavedItem(payload);
+      setSavedExternalIds(prev => {
+        const next = new Set(prev);
+        next.add(payload.externalItemId);
+        return next;
+      });
+      setSaveMessage('Item saved successfully.');
+    } catch (err) {
+      if (err.status === 409) {
+        setSavedExternalIds(prev => {
+          const next = new Set(prev);
+          next.add(payload.externalItemId);
+          return next;
+        });
+        setSaveMessage('Item is already in your saved list.');
+      } else {
+        setSaveMessage(err.message || 'Failed to save item. Please try again.');
+      }
+    } finally {
+      setSavingByExternalId(prev => ({
+        ...prev,
+        [payload.externalItemId]: false,
+      }));
+    }
   };
 
   const handleLogout = async () => {
@@ -38,28 +133,21 @@ export default function DashboardPage() {
             <p><strong>Email:</strong> {user.email ?? user.Email}</p>
             {user.city && <p><strong>Location:</strong> {user.city}{user.state ? `, ${user.state}` : ''}</p>}
           </div>
+
+          <div className="placeholder-grid welcome-actions-grid">
+            <div className="placeholder-card action-card" onClick={handleSavedItemsClick}>
+              <h3>Saved Items</h3>
+              <p>View and manage items you've saved for later.</p>
+              <button className="card-action-btn">Open Saved Items</button>
+            </div>
+            <div className="placeholder-card">
+              <h3>Saved Searches</h3>
+              <p>Get notified when new items match your searches.</p>
+            </div>
+          </div>
         </div>
 
-        <div className="placeholder-grid">
-          <div className="placeholder-card action-card" onClick={handleSearchClick}>
-            <h3>🔍 Search Craigslist</h3>
-            <p>Search Craigslist listings in one place.</p>
-            <button className="card-action-btn">Start Searching →</button>
-          </div>
-          <div className="placeholder-card action-card" onClick={handleSavedItemsClick}>
-            <h3>❤️ Saved Items</h3>
-            <p>View and manage items you've saved for later.</p>
-            <button className="card-action-btn">Open Saved Items →</button>
-          </div>
-          <div className="placeholder-card">
-            <h3>🔔 Saved Searches</h3>
-            <p>Get notified when new items match your searches.</p>
-          </div>
-          <div className="placeholder-card">
-            <h3>💳 Payment Methods</h3>
-            <p>Manage your payment options for quick checkout.</p>
-          </div>
-        </div>
+        <MarketplaceSearch sectionClassName="dashboard-search-section" />
       </main>
     </div>
   );

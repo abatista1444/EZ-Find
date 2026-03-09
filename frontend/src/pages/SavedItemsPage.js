@@ -127,17 +127,23 @@ export default function SavedItemsPage() {
   return (
     <div className="saved-items-page">
       <header className="saved-items-header">
-        <button className="back-btn" onClick={() => navigate('/dashboard')}>
-          ← Back to Dashboard
-        </button>
-        <h1>Saved Items</h1>
         <div className="saved-items-user">
-          <span>{firstName}!</span>
+          <h1 className="saved-items-logo">EZFind</h1>
+        </div>
+        <div className="saved-items-user">
+          <span>Welcome, {firstName}!</span>
           <button className="logout-btn" onClick={handleLogout}>Sign Out</button>
         </div>
       </header>
 
       <main className="saved-items-main">
+        <section className="saved-items-page-intro">
+          <button className="saved-items-back-btn" onClick={() => navigate('/dashboard')}>
+            Back to Dashboard
+          </button>
+          <h2>Saved Items</h2>
+        </section>
+
         <section className="saved-items-toolbar">
           <div className="toolbar-group">
             <label htmlFor="saved-items-filter">Filter</label>
