@@ -1,0 +1,4 @@
+SHOW TABLES;
+SELECT * FROM Users;
+SELECT * FROM Login;
+SELECT * FROM SavedItems;
