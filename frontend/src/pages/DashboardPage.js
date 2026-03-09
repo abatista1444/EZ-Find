@@ -7,6 +7,10 @@ export default function DashboardPage() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
+  const handleSearchClick = () => {
+    navigate('/search');
+  };
+
   const handleLogout = async () => {
     await logout();
     navigate('/login', { replace: true });
@@ -33,9 +37,10 @@ export default function DashboardPage() {
         </div>
 
         <div className="placeholder-grid">
-          <div className="placeholder-card">
-            <h3>🔍 Browse Items</h3>
-            <p>Search across Facebook Marketplace, Craigslist, and eBay in one place.</p>
+          <div className="placeholder-card action-card" onClick={handleSearchClick}>
+            <h3>🔍 Search Craigslist</h3>
+            <p>Search Craigslist listings in one place.</p>
+            <button className="card-action-btn">Start Searching →</button>
           </div>
           <div className="placeholder-card">
             <h3>❤️ Saved Items</h3>

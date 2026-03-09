@@ -1,6 +1,54 @@
 # EZFind – Unified Marketplace
 
-> Browse Facebook Marketplace, Craigslist, and eBay in one place.
+## Search API
+
+The backend exposes a unified search endpoint that currently queries Craigslist
+(and can be extended with additional connectors).
+
+### Configuration
+
+Craigslist connector settings are loaded from environment variables.
+- `CRAIGSLIST_DEFAULT_SITE` — Default Craigslist site/subdomain (for example `sfbay`) used
+  when no location is provided.
+- `CRAIGSLIST_PROVIDER_BASE_URL` — Optional third-party provider/proxy base URL. If set,
+  EZFind will try the provider first and then fall back to Craigslist RSS.
+- `CRAIGSLIST_PROVIDER_API_KEY` — Optional key for the provider endpoint.
+
+Craigslist does not provide an official public listing API. EZFind therefore uses an
+RSS-first integration (`format=rss`) and automatically falls back to an internal
+HTML scraper strategy when RSS is blocked (for example HTTP 403). This mode does not
+require a third-party provider or API key.
+
+In other words, the system works out-of-the-box without any API keys; credentials only
+unlock optional provider endpoints and may improve reliability or rate-limits.
+
+Add entries to `backend/.env` or supply via deployment configuration. The service is
+already resilient enough that the absence of keys does not prevent building or testing.
+
+Example request:
+
+```
+GET /api/search?q=bicycle&location=Seattle
+```
+
+The JSON response contains a `listings` array of normalized items and an `errors` array
+with any marketplace-specific failures. Clients should show partial results if errors are
+present.
+
+You can run the automated test suite (unit + integration) with Jest:
+
+```bash
+cd backend
+npm install       # first time only
+npm test          # runs jest
+```
+
+The old manual script was removed in favor of proper tests.
+
+---
+
+
+> Browse Craigslist listings in one place.
 
 ## Tech Stack
 

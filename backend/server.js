@@ -4,9 +4,25 @@ const session = require('express-session');
 const cors    = require('cors');
 
 const authRoutes = require('./routes/auth');
+const searchRoutes = require('./routes/search');
 
 const app  = express();
 const PORT = process.env.PORT || 5000;
+
+function validateOptionalMarketplaceConfig() {
+  const hasProviderBase = Boolean(process.env.CRAIGSLIST_PROVIDER_BASE_URL || process.env.CRAIGSLIST_PROXY);
+  const hasProviderKey = Boolean(process.env.CRAIGSLIST_PROVIDER_API_KEY);
+
+  if (hasProviderBase && !hasProviderKey) {
+    console.warn('Craigslist provider URL configured without CRAIGSLIST_PROVIDER_API_KEY; request may be unauthenticated.');
+  }
+
+  if (hasProviderKey && !hasProviderBase) {
+    console.warn('CRAIGSLIST_PROVIDER_API_KEY is set but no CRAIGSLIST_PROVIDER_BASE_URL is configured; RSS source will be used.');
+  }
+}
+
+validateOptionalMarketplaceConfig();
 
 // ─── Middleware ───────────────────────────────────────────────────────────────
 
@@ -35,6 +51,7 @@ app.use(session({
 // ─── Routes ───────────────────────────────────────────────────────────────────
 
 app.use('/api/auth', authRoutes);
+app.use('/api/search', searchRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -54,6 +71,12 @@ app.use((err, req, res, _next) => {
 
 // ─── Start ────────────────────────────────────────────────────────────────────
 
-app.listen(PORT, () => {
-  console.log(`🚀 EZFind backend listening on http://localhost:${PORT}`);
-});
+
+// Export app for integration testing; start server if this file is run directly
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`🚀 EZFind backend listening on http://localhost:${PORT}`);
+  });
+}
+
+module.exports = app;
