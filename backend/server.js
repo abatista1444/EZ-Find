@@ -6,6 +6,10 @@ const cors    = require('cors');
 const authRoutes = require('./routes/auth');
 const searchRoutes = require('./routes/search');
 const savedItemsRoutes = require('./routes/savedItems');
+const savedSearchesRoutes = require('./routes/savedSearches');
+const sharedSearchesRoutes = require('./routes/sharedSearches');
+const suggestionsRoutes = require('./routes/suggestions');
+const chatbotRoutes = require('./routes/chatbot');
 
 const app  = express();
 const PORT = process.env.PORT || 5000;
@@ -54,6 +58,10 @@ app.use(session({
 app.use('/api/auth', authRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/saved-items', savedItemsRoutes);
+app.use('/api/saved-searches', savedSearchesRoutes);
+app.use('/api/shared-searches', sharedSearchesRoutes);
+app.use('/api/suggestions', suggestionsRoutes);
+app.use('/api/chatbot', chatbotRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

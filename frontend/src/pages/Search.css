@@ -327,7 +327,246 @@
 }
 
 .save-item-btn--saved {
-  background: #2f855a;
+  background: #48bb78;
+}
+
+.save-item-btn--saved:hover:not(:disabled) {
+  background: #38a169;
+}
+
+.share-item-btn {
+  border: none;
+  border-radius: 6px;
+  padding: 0.5rem 0.9rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+  background: #667eea;
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.share-item-btn:hover {
+  background: #5568d3;
+}
+
+.share-item-btn:active {
+  background: #4554ba;
+}
+
+.search-filters-section {
+  margin-top: 0;
+  padding-top: 1.5rem;
+  border-top: 2px solid #e0e0e0;
+}
+
+.filters-toggle {
+  width: 100%;
+  padding: 0.75rem 0;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #333;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  transition: color 0.2s;
+  text-align: left;
+}
+
+.filters-toggle:hover:not(:disabled) {
+  color: #667eea;
+}
+
+.filters-toggle:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.filters-toggle-icon {
+  display: inline-block;
+  font-size: 0.85rem;
+  transition: transform 0.2s;
+  color: #667eea;
+}
+
+.filters-toggle-text {
+  flex: 1;
+}
+
+.filters-active-badge {
+  display: inline-block;
+  padding: 0.25rem 0.6rem;
+  background: #667eea;
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border-radius: 12px;
+}
+
+.filters-toggle--active .filters-toggle-icon {
+  transform: rotate(90deg);
+}
+
+.filters-content {
+  padding: 1.5rem 0;
+  margin-top: 1rem;
+  border-top: 1px solid #e0e0e0;
+  animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    max-height: 0;
+  }
+  to {
+    opacity: 1;
+    max-height: 600px;
+  }
+}
+
+.filters-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.filter-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+  color: #333;
+  font-size: 0.95rem;
+}
+
+.filter-input-pair {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.filter-input-pair input {
+  flex: 1;
+  padding: 0.75rem;
+  border: 2px solid #e0e0e0;
+  border-radius: 6px;
+  font-size: 1rem;
+  transition: border-color 0.2s;
+}
+
+.filter-input-pair input:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+.filter-input-pair input:disabled {
+  background: #f9f9f9;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.filter-separator {
+  color: #aaa;
+  font-weight: 600;
+  flex-shrink: 0;
+  font-size: 1rem;
+}
+
+.filter-group input {
+  padding: 0.75rem;
+  border: 2px solid #e0e0e0;
+  border-radius: 6px;
+  font-size: 1rem;
+  transition: border-color 0.2s;
+}
+
+.filter-group input:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+.filter-group input:disabled {
+  background: #f9f9f9;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.clear-filters-btn {
+  padding: 0.75rem 1.5rem;
+  background: #f5f5f5;
+  color: #333;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.clear-filters-btn:hover:not(:disabled) {
+  background: #ececec;
+  color: #000;
+}
+
+.clear-filters-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.results-section {
+  background: white;
+  padding: 2rem;
+  border-radius: 12px;
+}
+
+.results-header {
+  margin-bottom: 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.results-header h2 {
+  margin: 0;
+  color: #333;
+}
+
+.filter-count {
+  color: #667eea;
+  font-weight: 600;
+  font-size: 0.9em;
+}
+
+.share-search-btn {
+  padding: 0.5rem 1rem;
+  background-color: #4285f4;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.9rem;
+  transition: background-color 0.2s ease;
+  white-space: nowrap;
+}
+
+.share-search-btn:hover {
+  background-color: #3367d6;
+}
+
+.share-search-btn:active {
+  background-color: #2853c5;
 }
 
 @media (max-width: 768px) {
@@ -351,5 +590,14 @@
 
   .listings-grid {
     grid-template-columns: 1fr;
+  }
+
+  .filters-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .filters-toggle {
+    padding: 0.75rem;
+    font-size: 0.9rem;
   }
 }

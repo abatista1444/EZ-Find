@@ -46,12 +46,17 @@ CREATE TABLE IF NOT EXISTS SavedItems (
 
 -- Saved Searches table
 CREATE TABLE IF NOT EXISTS SavedSearches (
-  SavedSearch  INT AUTO_INCREMENT PRIMARY KEY,
-  userId       INT NOT NULL,
+  SearchId     INT AUTO_INCREMENT PRIMARY KEY,
+  UserId       INT NOT NULL,
   Name         VARCHAR(255) NOT NULL,
-  Cost         DECIMAL(10, 2),
+  Query        VARCHAR(500) NOT NULL,
+  Location     VARCHAR(255),
+  MinPrice     DECIMAL(10, 2),
+  MaxPrice     DECIMAL(10, 2),
   CreatedAt    DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (userId) REFERENCES Users(UserId) ON DELETE CASCADE
+  UpdatedAt    DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_saved_searches_user_name (UserId, Name),
+  FOREIGN KEY (UserId) REFERENCES Users(UserId) ON DELETE CASCADE
 );
 
 -- Payment System table

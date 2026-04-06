@@ -1,5 +1,8 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { createSavedItem, fetchSavedItems } from '../api/savedItemsApi';
+import { createSavedSearch } from '../api/savedSearchesApi';
+import ShareSearchModal from './ShareSearchModal';
+import SimpleShareModal from './SimpleShareModal';
 
 function formatPrice(price) {
   const value = typeof price === 'number' ? price : Number(price);
@@ -183,7 +186,70 @@ function buildSavedItemPayload(listing) {
   };
 }
 
-function ListingCard({ listing, hasImageError, onImageError, onSave, isSaving, isSaved, locationPrefix }) {
+function filterListingsByPrice(listings, minPrice, maxPrice) {
+  const min = minPrice ? Number(minPrice) : null;
+  const max = maxPrice ? Number(maxPrice) : null;
+
+  return listings.filter(listing => {
+    const price = listing.price || 0;
+    if (min !== null && price < min) return false;
+    if (max !== null && price > max) return false;
+    return true;
+  });
+}
+
+function filterListingsByDateRange(listings, startDate, endDate) {
+  const start = startDate ? new Date(startDate).getTime() : null;
+  const end = endDate ? new Date(endDate).getTime() : null;
+
+  return listings.filter(listing => {
+    if (!listing.postedAt) return true;
+    const posted = new Date(listing.postedAt).getTime();
+    if (start !== null && posted < start) return false;
+    if (end !== null && posted > end) return false;
+    return true;
+  });
+}
+
+function filterListingsByLocation(listings, locationFilter) {
+  if (!locationFilter.trim()) return listings;
+
+  const filter = locationFilter.toLowerCase();
+  return listings.filter(listing => {
+    if (!listing.location) return false;
+    return listing.location.toLowerCase().includes(filter);
+  });
+}
+
+function getFilteredListings(listings, filters) {
+  let result = listings;
+
+  if (filters.priceRange.min || filters.priceRange.max) {
+    result = filterListingsByPrice(result, filters.priceRange.min, filters.priceRange.max);
+  }
+
+  if (filters.dateRange.startDate || filters.dateRange.endDate) {
+    result = filterListingsByDateRange(result, filters.dateRange.startDate, filters.dateRange.endDate);
+  }
+
+  if (filters.locationFilter) {
+    result = filterListingsByLocation(result, filters.locationFilter);
+  }
+
+  return result;
+}
+
+function isFilterActive(filters) {
+  return Boolean(
+    filters.priceRange.min ||
+    filters.priceRange.max ||
+    filters.dateRange.startDate ||
+    filters.dateRange.endDate ||
+    filters.locationFilter
+  );
+}
+
+function ListingCard({ listing, hasImageError, onImageError, onSave, isSaving, isSaved, locationPrefix, onShare }) {
   const listingKey = listing.id || listing.url;
   const imageUrl = hasImageError ? null : listing.image;
   const sourceLabel = typeof listing.source === 'string' ? listing.source.toUpperCase() : 'UNKNOWN';
@@ -216,6 +282,14 @@ function ListingCard({ listing, hasImageError, onImageError, onSave, isSaving, i
           </a>
           <button
             type="button"
+            className="share-item-btn"
+            onClick={() => onShare(listing)}
+            title="Share this item"
+          >
+            Share
+          </button>
+          <button
+            type="button"
             className={`save-item-btn ${isSaved ? 'save-item-btn--saved' : ''}`}
             onClick={() => onSave(listing)}
             disabled={isSaving || isSaved}
@@ -228,12 +302,142 @@ function ListingCard({ listing, hasImageError, onImageError, onSave, isSaving, i
   );
 }
 
-export default function MarketplaceSearch({
-  sectionClassName = '',
-  title = 'Search Marketplace Listings',
-  locationPrefix = 'Location: ',
-  errorsTitle = 'Marketplace Errors',
-}) {
+function SearchFilters({ filters, onFilterChange, onClearFilters, enabled, isCollapsed, onToggleCollapse }) {
+  const handlePriceMinChange = (e) => {
+    onFilterChange({
+      ...filters,
+      priceRange: { ...filters.priceRange, min: e.target.value },
+    });
+  };
+
+  const handlePriceMaxChange = (e) => {
+    onFilterChange({
+      ...filters,
+      priceRange: { ...filters.priceRange, max: e.target.value },
+    });
+  };
+
+  const handleDateStartChange = (e) => {
+    onFilterChange({
+      ...filters,
+      dateRange: { ...filters.dateRange, startDate: e.target.value },
+    });
+  };
+
+  const handleDateEndChange = (e) => {
+    onFilterChange({
+      ...filters,
+      dateRange: { ...filters.dateRange, endDate: e.target.value },
+    });
+  };
+
+  const handleLocationChange = (e) => {
+    onFilterChange({
+      ...filters,
+      locationFilter: e.target.value,
+    });
+  };
+
+  const hasActiveFilters = isFilterActive(filters);
+
+  return (
+    <div className="search-filters-section">
+      <button
+        type="button"
+        className={`filters-toggle ${hasActiveFilters ? 'filters-toggle--active' : ''}`}
+        onClick={onToggleCollapse}
+        disabled={!enabled}
+      >
+        <span className="filters-toggle-icon">{isCollapsed ? '▶' : '▼'}</span>
+        <span className="filters-toggle-text">Advanced Filters</span>
+        {hasActiveFilters && <span className="filters-active-badge">Active</span>}
+      </button>
+
+      {!isCollapsed && (
+        <div className="filters-content">
+          <div className="filters-grid">
+            <div className="filter-group">
+              <label htmlFor="price-min">Price Range</label>
+              <div className="filter-input-pair">
+                <input
+                  id="price-min"
+                  type="number"
+                  placeholder="Min"
+                  value={filters.priceRange.min}
+                  onChange={handlePriceMinChange}
+                  disabled={!enabled}
+                  min="0"
+                />
+                <span className="filter-separator">—</span>
+                <input
+                  id="price-max"
+                  type="number"
+                  placeholder="Max"
+                  value={filters.priceRange.max}
+                  onChange={handlePriceMaxChange}
+                  disabled={!enabled}
+                  min="0"
+                />
+              </div>
+            </div>
+
+            <div className="filter-group">
+              <label htmlFor="date-start">Posted Date Range</label>
+              <div className="filter-input-pair">
+                <input
+                  id="date-start"
+                  type="date"
+                  value={filters.dateRange.startDate}
+                  onChange={handleDateStartChange}
+                  disabled={!enabled}
+                />
+                <span className="filter-separator">—</span>
+                <input
+                  id="date-end"
+                  type="date"
+                  value={filters.dateRange.endDate}
+                  onChange={handleDateEndChange}
+                  disabled={!enabled}
+                />
+              </div>
+            </div>
+
+            <div className="filter-group">
+              <label htmlFor="location-filter">Location Filter</label>
+              <input
+                id="location-filter"
+                type="text"
+                placeholder="e.g., Seattle, Brooklyn"
+                value={filters.locationFilter}
+                onChange={handleLocationChange}
+                disabled={!enabled}
+              />
+            </div>
+          </div>
+
+          <button
+            type="button"
+            className="clear-filters-btn"
+            onClick={onClearFilters}
+            disabled={!enabled || !hasActiveFilters}
+          >
+            Clear Filters
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default forwardRef(function MarketplaceSearch(
+  {
+    sectionClassName = '',
+    title = 'Search Marketplace Listings',
+    locationPrefix = 'Location: ',
+    errorsTitle = 'Marketplace Errors',
+  },
+  ref
+) {
   const [query, setQuery] = useState('');
   const [location, setLocation] = useState('');
   const [listings, setListings] = useState([]);
@@ -244,6 +448,16 @@ export default function MarketplaceSearch({
   const [savedExternalIds, setSavedExternalIds] = useState(new Set());
   const [savingByExternalId, setSavingByExternalId] = useState({});
   const [saveMessage, setSaveMessage] = useState('');
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [isSavingSearch, setIsSavingSearch] = useState(false);
+  const [isSimpleShareOpen, setIsSimpleShareOpen] = useState(false);
+  const [shareItemData, setShareItemData] = useState(null);
+  const [filters, setFilters] = useState({
+    priceRange: { min: '', max: '' },
+    dateRange: { startDate: '', endDate: '' },
+    locationFilter: '',
+  });
+  const [showFilters, setShowFilters] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -268,6 +482,98 @@ export default function MarketplaceSearch({
     };
   }, []);
 
+  useImperativeHandle(ref, () => ({
+    runSearch: (searchParams) => {
+      const { query: paramQuery, location: paramLocation, minPrice, maxPrice } = searchParams;
+      setQuery(paramQuery || '');
+      setLocation(paramLocation || '');
+      setFilters(prev => ({
+        ...prev,
+        priceRange: {
+          min: minPrice ? minPrice.toString() : '',
+          max: maxPrice ? maxPrice.toString() : '',
+        },
+      }));
+
+      // Trigger search immediately
+      setTimeout(() => {
+        // We need to build a form-like event and call handleSearch
+        const formEvent = new Event('submit');
+        const formElement = {
+          preventDefault: () => {},
+          target: {
+            query: { value: paramQuery || '' },
+            location: { value: paramLocation || '' },
+          },
+        };
+
+        // Set the state and trigger search
+        setQuery(paramQuery || '');
+        setLocation(paramLocation || '');
+        setLoading(true);
+        setHasSearched(true);
+
+        const params = new URLSearchParams();
+        params.append('q', paramQuery || '');
+        if (paramLocation) {
+          params.append('location', paramLocation);
+        }
+        if (minPrice) {
+          params.append('minPrice', minPrice);
+        }
+        if (maxPrice) {
+          params.append('maxPrice', maxPrice);
+        }
+
+        fetch(`http://localhost:5000/api/search?${params}`, {
+          method: 'GET',
+          credentials: 'include',
+        })
+          .then(response => {
+            if (!response.ok) {
+              throw new Error(`HTTP ${response.status}`);
+            }
+            return response.json();
+          })
+          .then(data => {
+            setListings(data.listings || []);
+            setErrors(data.errors || []);
+            setImageErrorsByListing({});
+            setSaveMessage('');
+          })
+          .catch(err => {
+            console.error('Search error:', err);
+            setListings([]);
+            setErrors([]);
+          })
+          .finally(() => {
+            setLoading(false);
+          });
+      }, 0);
+    },
+    getRecentResults: () => listings,
+  }), [listings]);
+
+  const filteredListings = useMemo(() => {
+    return getFilteredListings(listings, filters);
+  }, [listings, filters]);
+
+  const handleFilterChange = (newFilters) => {
+    setFilters(newFilters);
+  };
+
+  const handleClearFilters = () => {
+    setFilters({
+      priceRange: { min: '', max: '' },
+      dateRange: { startDate: '', endDate: '' },
+      locationFilter: '',
+    });
+  };
+
+  const handleToggleFilters = () => {
+    setShowFilters(!showFilters);
+  };
+
   const handleSearch = async (e) => {
     e.preventDefault();
     if (!query.trim()) {
@@ -283,6 +589,12 @@ export default function MarketplaceSearch({
       params.append('q', query);
       if (location) {
         params.append('location', location);
+      }
+      if (filters.priceRange.min) {
+        params.append('minPrice', filters.priceRange.min);
+      }
+      if (filters.priceRange.max) {
+        params.append('maxPrice', filters.priceRange.max);
       }
 
       const response = await fetch(`http://localhost:5000/api/search?${params}`, {
@@ -366,6 +678,46 @@ export default function MarketplaceSearch({
     }
   };
 
+  const handleSaveSearch = async () => {
+    if (!query.trim()) {
+      setSaveMessage('Please enter a search query to save.');
+      return;
+    }
+
+    setIsSavingSearch(true);
+
+    try {
+      // Generate a default search name from the query and location
+      const defaultName = location ? `${query} - ${location}` : query;
+
+      await createSavedSearch({
+        name: defaultName,
+        query: query.trim(),
+        location: location.trim() || undefined,
+        minPrice: filters.priceRange.min ? Number(filters.priceRange.min) : undefined,
+        maxPrice: filters.priceRange.max ? Number(filters.priceRange.max) : undefined,
+      });
+
+      setSaveMessage('Search saved successfully! View it in Saved Searches.');
+    } catch (err) {
+      if (err.status === 409) {
+        setSaveMessage('A search with this name already exists. Edit it in Saved Searches.');
+      } else {
+        setSaveMessage(err.message || 'Failed to save search. Please try again.');
+      }
+    } finally {
+      setIsSavingSearch(false);
+    }
+  };
+
+  const handleShareListing = (listing) => {
+    setShareItemData({
+      url: listing.url,
+      title: listing.title,
+    });
+    setIsSimpleShareOpen(true);
+  };
+
   return (
     <section className={sectionClassName}>
       <h2 className="dashboard-section-title">{title}</h2>
@@ -394,9 +746,29 @@ export default function MarketplaceSearch({
           />
         </div>
 
-        <button type="submit" className="search-btn" disabled={loading}>
-          {loading ? 'Searching...' : 'Search Craigslist'}
-        </button>
+        <div className="search-form-actions">
+          <button type="submit" className="search-btn" disabled={loading}>
+            {loading ? 'Searching...' : 'Search Craigslist'}
+          </button>
+          <button
+            type="button"
+            className="save-search-btn"
+            onClick={handleSaveSearch}
+            disabled={loading || isSavingSearch || !query.trim()}
+            title="Save this search to run it again later"
+          >
+            {isSavingSearch ? 'Saving...' : '💾 Save Search'}
+          </button>
+        </div>
+
+        <SearchFilters
+          filters={filters}
+          onFilterChange={handleFilterChange}
+          onClearFilters={handleClearFilters}
+          enabled={true}
+          isCollapsed={showFilters}
+          onToggleCollapse={handleToggleFilters}
+        />
       </form>
 
       {saveMessage && <p className="save-message">{saveMessage}</p>}
@@ -424,25 +796,70 @@ export default function MarketplaceSearch({
 
           {listings.length > 0 && (
             <div className="results-section">
-              <h2>Results ({listings.length})</h2>
-              <div className="listings-grid">
-                {listings.map((listing) => (
-                  <ListingCard
-                    key={listing.id || listing.url}
-                    listing={listing}
-                    hasImageError={Boolean(imageErrorsByListing[listing.id || listing.url])}
-                    onImageError={handleImageError}
-                    onSave={handleSaveListing}
-                    isSaving={Boolean(savingByExternalId[getExternalItemId(listing)])}
-                    isSaved={savedExternalIds.has(getExternalItemId(listing))}
-                    locationPrefix={locationPrefix}
-                  />
-                ))}
+              <div className="results-header">
+                <h2>
+                  Results ({listings.length})
+                  {isFilterActive(filters) && filteredListings.length !== listings.length && (
+                    <span className="filter-count"> - {filteredListings.length} matching filters</span>
+                  )}
+                </h2>
+                {listings.length > 0 && (
+                  <button
+                    className="share-search-btn"
+                    onClick={() => setIsShareModalOpen(true)}
+                    title="Share this search with others"
+                  >
+                    📤 Share
+                  </button>
+                )}
               </div>
+
+              {filteredListings.length === 0 && listings.length > 0 ? (
+                <div className="no-results">
+                  <p>No listings match your filters. Try adjusting them.</p>
+                </div>
+              ) : (
+                <div className="listings-grid">
+                  {filteredListings.map((listing) => (
+                    <ListingCard
+                      key={listing.id || listing.url}
+                      listing={listing}
+                      hasImageError={Boolean(imageErrorsByListing[listing.id || listing.url])}
+                      onImageError={handleImageError}
+                      onShare={handleShareListing}
+                      onSave={handleSaveListing}
+                      isSaving={Boolean(savingByExternalId[getExternalItemId(listing)])}
+                      isSaved={savedExternalIds.has(getExternalItemId(listing))}
+                      locationPrefix={locationPrefix}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </>
       )}
+
+      <ShareSearchModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        searchParams={{
+          query,
+          location,
+          minPrice: filters.priceRange.min,
+          maxPrice: filters.priceRange.max,
+        }}
+        onShare={() => {
+          setIsShareModalOpen(false);
+        }}
+      />
+
+      <SimpleShareModal
+        isOpen={isSimpleShareOpen}
+        onClose={() => setIsSimpleShareOpen(false)}
+        itemUrl={shareItemData?.url}
+        itemTitle={shareItemData?.title}
+      />
     </section>
   );
-}
+});

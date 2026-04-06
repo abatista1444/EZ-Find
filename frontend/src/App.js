@@ -6,6 +6,9 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
 import SavedItemsPage from './pages/SavedItemsPage';
+import SavedSearchesPage from './pages/SavedSearchesPage';
+import AccountPage from './pages/AccountPage';
+import SharedSearchPage from './pages/SharedSearchPage';
 
 export default function App() {
   return (
@@ -35,6 +38,23 @@ export default function App() {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/saved-searches"
+            element={
+              <ProtectedRoute>
+                <SavedSearchesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/account"
+            element={
+              <ProtectedRoute>
+                <AccountPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="/search/:token" element={<SharedSearchPage />} />
           {/* Catch-all */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

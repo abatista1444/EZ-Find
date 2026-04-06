@@ -31,10 +31,16 @@ CREATE TABLE Users (
     CREATE TABLE SavedSearches (
 		SearchId INT AUTO_INCREMENT PRIMARY KEY,
         UserId INT NOT NULL,
-        SearchQuery VARCHAR(500),
-        DateSaved DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (UserId) REFERENCES Users(UserId)
-			ON DELETE CASCADE );
+        Name VARCHAR(255) NOT NULL,
+        SearchQuery VARCHAR(500) NOT NULL,
+        Location VARCHAR(255),
+        MinPrice DECIMAL(10, 2),
+        MaxPrice DECIMAL(10, 2),
+        CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UpdatedAt DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (UserId) REFERENCES Users(UserId) ON DELETE CASCADE,
+        UNIQUE KEY uq_saved_searches_user_name (UserId, Name)
+        );
             
 	CREATE TABLE SavedItems (
 		ItemId INT AUTO_INCREMENT PRIMARY KEY,
@@ -52,5 +58,21 @@ CREATE TABLE Users (
     UNIQUE KEY uq_saved_items_user_external (UserId, ExternalItemId),
         FOREIGN KEY (UserId) REFERENCES Users(UserId)
 			ON DELETE CASCADE );
-            
-	
+
+	CREATE TABLE SharedSearchTokens (
+		TokenId INT AUTO_INCREMENT PRIMARY KEY,
+    Token VARCHAR(64) NOT NULL UNIQUE,
+    CreatedBy INT NOT NULL,
+    SearchQuery VARCHAR(500) NOT NULL,
+    Location VARCHAR(255),
+    MinPrice DECIMAL(10, 2),
+    MaxPrice DECIMAL(10, 2),
+    CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    ExpiresAt DATETIME,
+    AccessCount INT DEFAULT 0,
+    FOREIGN KEY (CreatedBy) REFERENCES Users(UserId) ON DELETE CASCADE,
+    INDEX idx_token (Token),
+    INDEX idx_created_by (CreatedBy),
+    INDEX idx_expires_at (ExpiresAt)
+	);
+

@@ -12,6 +12,7 @@
     "dev:frontend":  "cd frontend && npm start",
     "build":         "cd frontend && npm run build",
     "start":         "cd backend && npm start",
+    "stop":          "lsof -i :5000,:3000 | grep LISTEN | awk '{print $2}' | sort -u | xargs kill -9 2>/dev/null || true",
     "db:init":       "mysql -u $DB_USER -p$DB_PASSWORD < scripts/init_db.sql"
   },
   "devDependencies": {
