@@ -26,6 +26,8 @@ export default function SuggestionsSection({
       return;
     }
 
+    console.log('SuggestionsSection: Loading suggestions for', recentSearchResults.length, 'results');
+
     const loadSuggestions = async () => {
       setLoading(true);
       try {
@@ -33,10 +35,11 @@ export default function SuggestionsSection({
           recentSearchResults,
           10
         );
+        console.log('SuggestionsSection: Got', newSuggestions.length, 'suggestions');
         setSuggestions(newSuggestions);
         setMetadata(newMetadata);
       } catch (err) {
-        console.error('Failed to load suggestions:', err);
+        console.error('SuggestionsSection: Failed to load suggestions:', err);
         setSuggestions([]);
         setMetadata({ error: err.message });
       } finally {
@@ -125,7 +128,11 @@ export default function SuggestionsSection({
   };
 
   // No suggestions or search results yet
-  if (recentSearchResults.length === 0 || suggestions.length === 0) {
+  if (recentSearchResults.length === 0) {
+    return null;
+  }
+
+  if (suggestions.length === 0 && !loading) {
     return null;
   }
 
@@ -156,11 +163,13 @@ export default function SuggestionsSection({
 
       {saveMessage && <p className="save-message">{saveMessage}</p>}
 
-      {loading ? (
+      {loading && (
         <div className="suggestions-loading">
           <p>Analyzing your interests...</p>
         </div>
-      ) : suggestions.length > 0 ? (
+      )}
+
+      {!loading && suggestions.length > 0 && (
         <div className="suggestions-grid">
           {suggestions.map(suggestion => {
             const externalId = suggestion.id || suggestion.url;
@@ -218,10 +227,6 @@ export default function SuggestionsSection({
               </div>
             );
           })}
-        </div>
-      ) : (
-        <div className="suggestions-empty">
-          <p>No suggestions at this time. Try searching for more items to improve recommendations.</p>
         </div>
       )}
     </section>

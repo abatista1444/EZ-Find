@@ -9,17 +9,14 @@ const API_BASE = '/api/suggestions';
  * @returns {Promise<{suggestions: Array, metadata: Object}>}
  */
 export async function fetchSuggestions(recentSearchResults = [], limit = 10) {
-  const params = new URLSearchParams();
-  params.append('limit', limit);
-
-  // Pass recent search results to backend for content-based filtering
-  if (Array.isArray(recentSearchResults) && recentSearchResults.length > 0) {
-    params.append('recentResults', JSON.stringify(recentSearchResults));
-  }
-
-  const response = await fetch(`${API_BASE}?${params}`, {
-    method: 'GET',
+  const response = await fetch(API_BASE, {
+    method: 'POST',
     credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      recentResults: Array.isArray(recentSearchResults) ? recentSearchResults : [],
+      limit: Math.min(50, Math.max(1, limit))
+    })
   });
 
   const data = await response.json();
