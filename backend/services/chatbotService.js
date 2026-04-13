@@ -27,6 +27,30 @@ const LOCATION_MAPPING = {
   'dc': 'dc',
   'miami': 'miami',
   'portland': 'portland',
+  'atlanta': 'atlanta',
+  'atl': 'atlanta',
+  'phoenix': 'phoenix',
+  'san diego': 'sandiego',
+  'sandiego': 'sandiego',
+  'las vegas': 'lasvegas',
+  'lasvegas': 'lasvegas',
+  'vegas': 'lasvegas',
+  'charlotte': 'charlotte',
+  'raleigh': 'raleigh',
+  'minneapolis': 'minneapolis',
+  'minneapolis-st paul': 'minneapolis',
+  'minneapolis-st. paul': 'minneapolis',
+  'minneapolis-saint paul': 'minneapolis',
+  'minneapolis-twin cities': 'minneapolis',
+  'twin cities': 'minneapolis',
+  'philadelphia': 'philadelphia',
+  'philly': 'philadelphia',
+  'phoenix': 'phoenix',
+  'salt lake': 'saltlakecity',
+  'salt lake city': 'saltlakecity',
+  'slc': 'saltlakecity',
+  'vegas': 'lasvegas',
+  'los angeles': 'la',
 };
 
 class ChatbotService {
@@ -99,15 +123,19 @@ The user is looking for items on Craigslist.
 
     prompt += `Based on the user's new request, extract the following search parameters as JSON:
 {
-  "query": "...", (the main search term for the item they're looking for)
-  "location": "...", (Craigslist site code, e.g., sfbay, la, newyork, or null if not specified)
-  "minPrice": null or number, (minimum price if mentioned)
-  "maxPrice": null or number, (maximum price if mentioned)
+  "query": "...", (the main search term for the item they're looking for - ONLY from their current message)
+  "location": "...", (Craigslist site code extracted from THEIR MESSAGE - e.g., sfbay, la, newyork, seattle, chicago, etc. Use null if they don't mention a location)
+  "minPrice": null or number, (minimum price if mentioned in their message)
+  "maxPrice": null or number, (maximum price if mentioned in their message)
   "acknowledgment": "..." (a friendly 1-2 sentence acknowledgment of what they're looking for)
 }
 
-IMPORTANT: Return ONLY valid JSON, no extra text. If you cannot determine a value, use null.
-Locations should be lowercase site codes (sfbay, la, newyork, etc), not full names.`;
+IMPORTANT RULES:
+- Return ONLY valid JSON, no extra text.
+- Location MUST come from the user's current message, NOT from their previous searches.
+- If user doesn't specify a location in their message, set location to null.
+- Locations should be lowercase site codes (sfbay, la, newyork, chicago, seattle, denver, etc), not full names.
+- For unknown values, use null.`;
 
     return prompt;
   }
@@ -119,15 +147,22 @@ Locations should be lowercase site codes (sfbay, la, newyork, etc), not full nam
     if (!locationStr) return null;
     const normalized = locationStr.toLowerCase().trim();
 
-    // Direct match
+    // Direct exact match first
     if (LOCATION_MAPPING[normalized]) {
       return LOCATION_MAPPING[normalized];
     }
 
-    // Partial match
-    for (const [key, value] of Object.entries(LOCATION_MAPPING)) {
-      if (normalized.includes(key) || key.includes(normalized)) {
-        return value;
+    // Check each word in the normalized string
+    const words = normalized.split(/\s+/);
+
+    // Sort mapping entries by length (longest first) to avoid "la" matching in "seattle"
+    const sortedEntries = Object.entries(LOCATION_MAPPING).sort((a, b) => b[0].length - a[0].length);
+
+    for (const word of words) {
+      for (const [key, value] of sortedEntries) {
+        if (word === key) {
+          return value;
+        }
       }
     }
 
@@ -147,9 +182,15 @@ Locations should be lowercase site codes (sfbay, la, newyork, etc), not full nam
 
       const parsed = JSON.parse(jsonMatch[0]);
 
+      // Log for debugging
+      console.log('Claude extracted location:', parsed.location);
+      const normalizedLocation = parsed.location ? this.normalizeLocation(parsed.location) : null;
+      console.log('After normalization:', normalizedLocation);
+      console.log('Full parsed response:', parsed);
+
       return {
         query: parsed.query || '',
-        location: parsed.location ? this.normalizeLocation(parsed.location) : null,
+        location: normalizedLocation,
         minPrice: Number.isFinite(parsed.minPrice) ? Math.max(0, parsed.minPrice) : null,
         maxPrice: Number.isFinite(parsed.maxPrice) ? Math.max(0, parsed.maxPrice) : null,
         acknowledgment: parsed.acknowledgment || 'Got it! Searching for your items...',
@@ -184,7 +225,7 @@ Locations should be lowercase site codes (sfbay, la, newyork, etc), not full nam
 
       // Call Claude API
       const response = await client.messages.create({
-        model: 'claude-3-5-sonnet-20241022',
+        model: 'claude-sonnet-4-6',
         max_tokens: 300,
         system: systemPrompt,
         messages: [
