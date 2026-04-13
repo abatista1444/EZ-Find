@@ -47,8 +47,16 @@ The old manual script was removed in favor of proper tests.
 
 ---
 
+## Features
 
-> Browse Craigslist listings in one place.
+- **🔍 Unified Marketplace Search** — Search Craigslist listings from a single interface
+- **📌 Save Items & Searches** — Bookmark listings and save search queries for future reference
+- **🔗 Share Search Results** — Generate shareable tokens for public search links without login
+- **💬 AI Chatbot** — Natural language search assistant powered by Claude API
+- **👤 User Accounts** — Secure authentication with bcrypt password hashing
+- **🔐 Session Management** — Server-side sessions with httpOnly cookies
+
+---
 
 ## Tech Stack
 
@@ -59,6 +67,7 @@ The old manual script was removed in favor of proper tests.
 | Database | MySQL 8+                           |
 | Sessions | express-session (server-side)      |
 | Auth     | bcryptjs (password hashing)        |
+| AI       | Claude API (natural language search) |
 
 ---
 
@@ -110,6 +119,9 @@ DB_NAME=ezfind
 
 SESSION_SECRET=change_this_to_a_long_random_string
 SESSION_MAX_AGE=86400000
+
+# Optional: Claude API key for AI chatbot (get free key at https://console.anthropic.com/)
+CLAUDE_API_KEY=sk-...
 ```
 
 > **Important:** `SESSION_SECRET` must be changed to a long random string in any real environment.
@@ -137,6 +149,42 @@ npm run dev:frontend
 ### 5. Open the app
 
 Navigate to **http://localhost:3000** in your browser.
+
+---
+
+## Usage Guide
+
+### Searching for Listings
+
+1. Enter a search term and location on the dashboard
+2. Click **"Search Craigslist"** to browse results
+3. Use the **AI Chatbot** (right sidebar) for natural language queries like:
+   - "Show me road bikes under $300 in Seattle"
+   - "I'm looking for used furniture in San Francisco"
+4. Click **"Save Search"** to keep the query for later
+
+### Saving Items and Searches
+
+- **Saved Items**: Click the save icon on any listing to bookmark it
+- **Saved Searches**: Click the "Save Search" button after searching
+- Visit **"Saved Items"** or **"Saved Searches"** pages to manage your collection
+- Edit or delete saved items and searches anytime
+
+### Sharing Search Results
+
+1. Perform a search
+2. Click **"Share Search"** button
+3. (Optional) Set an expiration date
+4. Copy the generated URL and share with others
+5. Recipients can view results without creating an account
+
+### Using the AI Chatbot
+
+1. Open the **ChatBot** sidebar on the dashboard (right side)
+2. Describe what you're looking for in natural language
+3. The AI extracts search parameters and suggests refinements
+4. Click the search button to execute the query
+5. Collapse the sidebar anytime by clicking the toggle
 
 ---
 
@@ -189,6 +237,13 @@ npm start    # starts only the Express server on port 5000
 | GET    | `/api/saved-items`              | Yes           | List the current user's saved items       |
 | POST   | `/api/saved-items`              | Yes           | Save a listing for the current user      |
 | DELETE | `/api/saved-items/:externalItemId` | Yes        | Remove a saved listing by external ID    |
+| GET    | `/api/saved-searches`           | Yes           | List the current user's saved searches    |
+| POST   | `/api/saved-searches`           | Yes           | Save a search query for the current user |
+| DELETE | `/api/saved-searches/:id`       | Yes           | Delete a saved search by ID              |
+| POST   | `/api/shared-searches`          | Yes           | Create a shareable token for a search    |
+| GET    | `/api/shared-searches/:token`   | No            | Get shared search metadata by token      |
+| GET    | `/api/shared-searches/user/my-shares` | Yes    | List the current user's shared searches  |
+| POST   | `/api/chatbot/process-message`  | Yes           | Process natural language search request  |
 
 ### POST /api/auth/register
 
@@ -290,6 +345,89 @@ Returns:
 - `404` if the item was not found
 - `422` for validation errors
 
+### POST /api/shared-searches
+
+Creates a shareable token for a search result. Requires an authenticated session cookie.
+
+Request:
+
+```json
+{
+  "query": "bicycle",
+  "location": "Seattle",
+  "minPrice": 100,
+  "maxPrice": 1000,
+  "expiresInDays": 7
+}
+```
+
+Response:
+
+```json
+{
+  "token": "a1b2c3d4e5f6...",
+  "shareUrl": "http://localhost:3000/search/a1b2c3d4e5f6...",
+  "expiresAt": "2026-04-20T12:00:00Z"
+}
+```
+
+Returns:
+- `201` when created
+- `422` for validation errors
+
+### GET /api/shared-searches/:token
+
+Retrieves metadata for a shared search without requiring authentication.
+
+Response:
+
+```json
+{
+  "query": "bicycle",
+  "location": "Seattle",
+  "minPrice": 100,
+  "maxPrice": 1000,
+  "createdAt": "2026-04-13T12:00:00Z",
+  "accessCount": 5
+}
+```
+
+Returns:
+- `200` when found
+- `404` if token is expired or not found
+
+### POST /api/chatbot/process-message
+
+Processes natural language input to extract search parameters using Claude AI. Requires an authenticated session cookie.
+
+Request:
+
+```json
+{
+  "message": "I'm looking for a mountain bike under $500 in San Francisco"
+}
+```
+
+Response:
+
+```json
+{
+  "message": "Found a great match! I'm searching for mountain bikes up to $500 in San Francisco.",
+  "searchParams": {
+    "query": "mountain bike",
+    "location": "sfbay",
+    "minPrice": null,
+    "maxPrice": 500
+  },
+  "confidence": 0.92
+}
+```
+
+Returns:
+- `200` with extracted parameters
+- `400` if message is empty
+- `422` for processing errors
+
 ---
 
 ## Project Structure
@@ -313,6 +451,9 @@ ezfind/
 │   │   ├── ListingAggregator.js  # Multi-source aggregation logic
 │   │   ├── listingTypes.js       # Shared listing normalization types
 │   │   ├── savedItemsService.js
+│   │   ├── savedSearchesService.js
+│   │   ├── sharedSearchService.js
+│   │   ├── chatbotService.js     # Claude AI integration
 │   │   └── marketplaces/
 │   │       ├── craigslistConnector.js
 │   │       └── craigslistSources/
@@ -322,7 +463,10 @@ ezfind/
 │   ├── routes/
 │   │   ├── auth.js               # Register / login / logout / me
 │   │   ├── search.js             # Unified listing search endpoint
-│   │   └── savedItems.js         # Saved listings CRUD endpoints
+│   │   ├── savedItems.js         # Saved listings CRUD endpoints
+│   │   ├── savedSearches.js      # Saved searches CRUD endpoints
+│   │   ├── sharedSearches.js     # Shared search token endpoints
+│   │   └── chatbot.js            # AI chatbot endpoint
 │   └── test/
 │       ├── aggregator.test.js
 │       ├── craigslistConnector.test.js
@@ -338,21 +482,32 @@ ezfind/
     ├── App.js                # Router setup
     ├── index.js
     ├── api/
-    │   └── savedItemsApi.js
+    │   ├── savedItemsApi.js
+    │   ├── savedSearchesApi.js
+    │   ├── sharedSearchesApi.js
+    │   └── chatbotApi.js
     ├── context/
     │   └── AuthContext.js
     ├── components/
-    │   └── ProtectedRoute.js
+    │   ├── ProtectedRoute.js
+    │   ├── MarketplaceSearch.js
+    │   ├── ShareSearchModal.js
+    │   └── ChatbotSidebar.js
     └── pages/
       ├── SearchPage.js
       ├── SavedItemsPage.js
+      ├── SavedSearchesPage.js
+      ├── SharedSearchPage.js
       ├── LoginPage.js
       ├── RegisterPage.js
       ├── DashboardPage.js
       ├── Auth.css
       ├── Dashboard.css
       ├── Search.css
-      └── SavedItems.css
+      ├── SavedItems.css
+      ├── SavedSearches.css
+      ├── SharedSearch.css
+      └── ChatbotSidebar.css
 ```
 
 ---

@@ -59,6 +59,24 @@ CREATE TABLE IF NOT EXISTS SavedSearches (
   FOREIGN KEY (UserId) REFERENCES Users(UserId) ON DELETE CASCADE
 );
 
+-- Shared Search Tokens table
+CREATE TABLE IF NOT EXISTS SharedSearchTokens (
+  TokenId      INT AUTO_INCREMENT PRIMARY KEY,
+  Token        VARCHAR(64) NOT NULL UNIQUE,
+  CreatedBy    INT NOT NULL,
+  SearchQuery  VARCHAR(500) NOT NULL,
+  Location     VARCHAR(255),
+  MinPrice     DECIMAL(10, 2),
+  MaxPrice     DECIMAL(10, 2),
+  CreatedAt    DATETIME DEFAULT CURRENT_TIMESTAMP,
+  ExpiresAt    DATETIME,
+  AccessCount  INT DEFAULT 0,
+  FOREIGN KEY (CreatedBy) REFERENCES Users(UserId) ON DELETE CASCADE,
+  INDEX idx_token (Token),
+  INDEX idx_created_by (CreatedBy),
+  INDEX idx_expires_at (ExpiresAt)
+);
+
 -- Payment System table
 CREATE TABLE IF NOT EXISTS PaymentSystem (
   paymentSystem INT AUTO_INCREMENT PRIMARY KEY,
